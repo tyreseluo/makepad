@@ -270,7 +270,16 @@ pub fn rust_build(deveco_home: &Option<String>, host_os: &HostOs, args: &[String
         for arg in args {
             args_out.push(arg);
         }
-        let makepad_env = std::env::var("MAKEPAD").unwrap_or("lines".to_string());
+        let mut makepad_env = std::env::var("MAKEPAD").unwrap_or_else(|_| "lines".to_string());
+        if !makepad_env
+            .split(['+', ','])
+            .any(|item| item.trim() == "use_gles_3")
+        {
+            if !makepad_env.is_empty() {
+                makepad_env.push('+');
+            }
+            makepad_env.push_str("use_gles_3");
+        }
         shell_env(
             &[
                 (&format!("CC_{toolchain}"),     cc_path.to_str().unwrap()),

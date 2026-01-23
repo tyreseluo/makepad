@@ -603,6 +603,9 @@ pub unsafe  fn create_egl_context(
         EGL_BLUE_SIZE, 8,
         EGL_ALPHA_SIZE, 8,
         EGL_RENDERABLE_TYPE,
+        #[cfg(use_gles_3)]
+        EGL_OPENGL_ES3_BIT_KHR,
+        #[cfg(not(use_gles_3))]
         EGL_OPENGL_ES2_BIT,
         EGL_DEPTH_SIZE, 0,
         EGL_STENCIL_SIZE, 0,
