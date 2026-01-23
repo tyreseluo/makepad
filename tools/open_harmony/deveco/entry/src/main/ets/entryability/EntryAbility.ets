@@ -8,6 +8,7 @@ export default class EntryAbility extends UIAbility {
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
     let x = ArkGlue.initInstance(this.context);
     makepad.onCreate(x);
+    ArkGlue.getInstance().xComponentContext = makepad;
     hilog.info(0x0000, 'testTag', '%{public}s', 'Ability onCreate');
   }
 

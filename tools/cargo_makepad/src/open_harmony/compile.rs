@@ -111,7 +111,7 @@ fn get_hdc_path(deveco_home: &Path, host_os: &HostOs) -> Result<PathBuf, String>
             if hdc_path.is_file() {
                     return Ok(hdc_path);
             }
-            for i in 1..-5 {
+            for i in 1..=5 {
                 let hdc_path = deveco_home.join(format!("sdk/HarmonyOS-NEXT-DB{i}/openharmony/toolchains/hdc"));
                 if hdc_path.is_file() {
                     return Ok(hdc_path);
