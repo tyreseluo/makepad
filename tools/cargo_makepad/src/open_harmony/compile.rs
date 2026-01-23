@@ -224,6 +224,7 @@ pub fn rust_build(deveco_home: &Option<String>, host_os: &HostOs, args: &[String
         _ => panic!()
     };
     
+    let napi_module_name = "makepad";
     for target in targets {
         let target_triple = target.target_triple_str();
         let native_llvm_bin = sdk_path.join("native").join("llvm").join("bin");
@@ -280,6 +281,7 @@ pub fn rust_build(deveco_home: &Option<String>, host_os: &HostOs, args: &[String
                 (&format!("CARGO_TARGET_{}_LINKER", toolchain.to_uppercase()), full_clang_path.to_str().unwrap()),
 
                 ("MAKEPAD", &makepad_env),
+                ("NAPI_BUILD_TARGET_NAME", napi_module_name),
             ],
             &cwd,
             "rustup",
