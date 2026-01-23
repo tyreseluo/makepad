@@ -9,6 +9,7 @@ declare type Any = ESObject;
 
 export interface MakepadXComponentInterface{
   onCreate(ark_ts: object):void;
+  registerXComponent(xcomponent: object):void;
   handleInsertTextEvent(text:String):void;
   handleDeleteLeftEvent(length: number):void;
   handleKeyboardStatus(isOpen:boolean, keyboardHeight:number):void;

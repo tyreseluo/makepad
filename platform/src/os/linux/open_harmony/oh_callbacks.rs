@@ -12,6 +12,7 @@ use ohos_sys::xcomponent::{
 use std::cell::{Cell, RefCell};
 use std::mem::MaybeUninit;
 use std::os::raw::c_void;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
 
 use super::raw_file::RawFileMgr;
@@ -26,6 +27,8 @@ struct VSyncParams {
 thread_local! {
     static OHOS_MSG_TX: RefCell<Option<mpsc::Sender<FromOhosMessage>>> = RefCell::new(None);
 }
+
+static XCOMPONENT_REGISTERED: AtomicBool = AtomicBool::new(false);
 
 pub fn send_from_ohos_message(message: FromOhosMessage) {
     OHOS_MSG_TX.with(|tx| {
@@ -181,17 +184,36 @@ pub fn init_globals(from_ohos_tx: mpsc::Sender<FromOhosMessage>) {
 }
 
 pub fn register_xcomponent_callbacks(env: &Env, xcomponent: &JsObject) {
+    if XCOMPONENT_REGISTERED.swap(true, Ordering::SeqCst) {
+        return;
+    }
     crate::log!("reginter xcomponent callbacks");
-    let raw = unsafe { xcomponent.raw() };
     let raw_env = env.raw();
     let mut native_xcomponent: *mut OH_NativeXComponent = core::ptr::null_mut();
-    unsafe {
-        let res = napi_ohos::sys::napi_unwrap(
+    let mut res = unsafe {
+        let raw = xcomponent.raw();
+        napi_ohos::sys::napi_unwrap(
             raw_env,
             raw,
             &mut native_xcomponent as *mut *mut OH_NativeXComponent as *mut *mut c_void,
-        );
-        assert!(res == 0);
+        )
+    };
+    if res != 0 {
+        if let Ok(inner) = xcomponent.get_named_property::<JsObject>("__NATIVE_XCOMPONENT_OBJ__") {
+            res = unsafe {
+                let raw = inner.raw();
+                napi_ohos::sys::napi_unwrap(
+                    raw_env,
+                    raw,
+                    &mut native_xcomponent as *mut *mut OH_NativeXComponent as *mut *mut c_void,
+                )
+            };
+        }
+    }
+    if res != 0 {
+        XCOMPONENT_REGISTERED.store(false, Ordering::SeqCst);
+        crate::error!("Failed to unwrap XComponent object: {res}");
+        return;
     }
     crate::log!("Got native_xcomponent!");
     let cbs = Box::new(OH_NativeXComponent_Callback {
@@ -204,10 +226,17 @@ pub fn register_xcomponent_callbacks(env: &Env, xcomponent: &JsObject) {
         OH_NativeXComponent_RegisterCallback(native_xcomponent, Box::leak(cbs) as *mut _)
     };
     if res != 0 {
+        XCOMPONENT_REGISTERED.store(false, Ordering::SeqCst);
         crate::error!("Failed to register XComponent callbacks");
     } else {
         crate::log!("Register XComponent callbacks successfully");
     }
+}
+
+#[napi(js_name = "registerXComponent")]
+pub fn register_xcomponent(env: Env, xcomponent: JsObject) -> napi_ohos::Result<()> {
+    register_xcomponent_callbacks(&env, &xcomponent);
+    Ok(())
 }
 
 pub fn register_vsync_callback(from_ohos_tx: mpsc::Sender<FromOhosMessage>) {
