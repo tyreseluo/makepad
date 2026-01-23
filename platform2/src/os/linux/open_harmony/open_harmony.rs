@@ -311,6 +311,7 @@ impl Cx {
     where
         F: FnOnce() -> Box<Cx> + Send + 'static,
     {
+        Cx::init_log();
         crate::log!("ohos init");
         static ONCE: std::sync::Once = std::sync::Once::new();
         ONCE.call_once(move || {
@@ -376,14 +377,13 @@ impl Cx {
             assert!(!surface.is_null());
 
             crate::log!("eglCreateWindowSurface success");
-            unsafe {
-                (libegl.eglSwapBuffers.unwrap())(egl_display, surface);
-            }
 
             if unsafe {
                 (libegl.eglMakeCurrent.unwrap())(egl_display, surface, surface, egl_context)
             } == 0
             {
+                let err_code = unsafe { (libegl.eglGetError.unwrap())() };
+                crate::error!("eglMakeCurrent error code:{}", err_code);
                 panic!();
             }
 
@@ -665,7 +665,15 @@ impl CxOhosDisplay {
     }
 
     unsafe fn swap_buffers(&mut self) {
-        (self.libegl.eglSwapBuffers.unwrap())(self.egl_display, self.surface);
+        if self.surface.is_null() {
+            crate::error!("eglSwapBuffers called with null surface");
+            return;
+        }
+        let res = (self.libegl.eglSwapBuffers.unwrap())(self.egl_display, self.surface);
+        if res == 0 {
+            let err_code = (self.libegl.eglGetError.unwrap())();
+            crate::error!("eglSwapBuffers error code:{}", err_code);
+        }
     }
 
     unsafe fn make_current(&mut self) {
